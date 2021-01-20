@@ -83,7 +83,10 @@ class PedraAgent():
                 discount *= self.gamma
             G[t] = G_sum
         rewards = torch.tensor(G, dtype=torch.float).to(self.device)
-        rewards = (rewards - rewards.mean()) / (rewards.std())
+        if len(rewards)==1:
+            rewards = torch.tensor([0.0], dtype=torch.float).to(self.device)
+        else:
+            rewards = (rewards - rewards.mean()) / (rewards.std())
         
         loss = torch.tensor([0.0], dtype=torch.float).to(self.device)
         
