@@ -15,7 +15,7 @@ from configs.read_cfg import read_cfg, update_algorithm_cfg
 
 
 def DeepREINFORCE(cfg, env_process, env_folder):
-    algorithm_cfg = read_cfg(config_filename='configs/DeepREINFORCE.cfg', verbose=True)
+    algorithm_cfg = read_cfg(config_filename='configs\\DeepREINFORCE.cfg', verbose=True)
     algorithm_cfg.algorithm = cfg.algorithm
     # Connect to Unreal Engine and get the drone handle: client
     client, old_posit, initZ = connect_drone(ip_address=cfg.ip_address, phase=cfg.mode, num_agents=cfg.num_agents)
@@ -109,7 +109,7 @@ def DeepREINFORCE(cfg, env_process, env_folder):
     distance[name_agent] = 0
 
     # Log file
-    log_path = algorithm_cfg.network_path + '/' + name_agent + '/' + cfg.mode + 'log.txt'
+    log_path = algorithm_cfg.network_path + '\\' + name_agent + '\\' + cfg.mode + 'log.txt'
     print("Log path: ", log_path)
     log_files[name_agent] = open(log_path, 'w')
     print_orderly('Simulation begins', 80)
@@ -314,7 +314,7 @@ def DeepREINFORCE(cfg, env_process, env_folder):
 
                         if nav_x:  # Nav_x is empty if the drone collides in first iteration
                             ax_nav.plot(nav_x.pop(), nav_y.pop(), 'r*', linewidth=20)
-                        file_path = env_folder + 'results/'
+                        file_path = env_folder + 'results\\'
                         fig_z.savefig(file_path + 'altitude_variation.png', dpi=500)
                         fig_nav.savefig(file_path + 'navigation.png', dpi=500)
                         close_env(env_process)

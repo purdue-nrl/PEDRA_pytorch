@@ -14,7 +14,7 @@ def generate_json(cfg):
     if not os.path.exists(path):
         os.makedirs(path)
 
-    filename = path + '\settings.json'
+    filename = path + '\\settings.json'
 
     data = {}
 
@@ -79,7 +79,7 @@ def generate_json(cfg):
 
 if __name__ == '__main__':
     # Read the config file
-    cfg = read_cfg(config_filename='configs/config.cfg', verbose=True)
+    cfg = read_cfg(config_filename='configs\\config.cfg', verbose=True)
     cfg.num_agents=1
     can_proceed = generate_json(cfg)
     # Check if NVIDIA GPU is available
@@ -96,6 +96,7 @@ if __name__ == '__main__':
         if cfg.mode != 'move_around':
             algorithm = importlib.import_module('algorithms.' + cfg.algorithm)
             name = 'algorithm.' + cfg.algorithm + '(cfg, env_process, env_folder)'
+            print(name)
             eval(name)
         else:
             print('Use keyboard to navigate')

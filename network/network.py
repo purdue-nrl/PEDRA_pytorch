@@ -140,7 +140,7 @@ class AlexNetConditional(object):
 
     def __init__(self, x, num_actions, train_type):
         self.x = x
-        weights_path = 'models/imagenet.npy'
+        weights_path = 'models\\imagenet.npy'
         weights = np.load(open(weights_path, "rb"), encoding="latin1").item()
         # print('Loading imagenet weights for the conv layers and random for fc layers')
         train_conv = True
@@ -234,7 +234,7 @@ class AlexNetDuel(object):
 
     def __init__(self, x, num_actions, train_type):
         self.x = x
-        weights_path = 'models/imagenet.npy'
+        weights_path = 'models\\imagenet.npy'
         weights = np.load(open(weights_path, "rb"), encoding="latin1").item()
         # print('Loading imagenet weights for the conv layers and random for fc layers')
         train_conv = True
@@ -312,7 +312,7 @@ class AlexNetDuelPrune(object):
     def __init__(self, x, num_actions, train_type):
         self.x = x
         # weights_path = 'models/imagenet.npy'
-        weights_path = 'models/prune_weights.npy'
+        weights_path = 'models\\prune_weights.npy'
         weights = np.load(open(weights_path, "rb"), encoding="latin1").item()
         print('Loading pruned weights for the conv layers and random for fc layers')
         train_conv = True
@@ -389,7 +389,7 @@ class AlexNet(object):
 
     def __init__(self, x, num_actions, train_type):
         self.x = x
-        weights_path = 'models/imagenet.npy'
+        weights_path = 'models\\imagenet.npy'
         weights = np.load(open(weights_path, "rb"), encoding="latin1").item()
         # print('Loading imagenet weights for the conv layers and random for fc layers')
         train_conv = True

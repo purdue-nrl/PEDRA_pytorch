@@ -25,10 +25,11 @@ def close_env(env_process):
 def save_network_path(cfg, algorithm_cfg):
     # Save the network to the directory network_path
     weights_type = 'Imagenet'
+    bslash = '\\'
     if algorithm_cfg.custom_load == True:
-        algorithm_cfg.network_path = 'models/trained/' + cfg.env_type + '/' + cfg.env_name + '/' + 'CustomLoad/' + algorithm_cfg.train_type + '/'
+        algorithm_cfg.network_path = 'models\\trained\\' + cfg.env_type + bslash + cfg.env_name + bslash + 'CustomLoad' + bslash + algorithm_cfg.train_type + bslash
     else:
-        algorithm_cfg.network_path = 'models/trained/' + cfg.env_type + '/' + cfg.env_name + '/' + weights_type + '/' + algorithm_cfg.train_type + '/'
+        algorithm_cfg.network_path = 'models\\trained\\' + cfg.env_type + bslash + cfg.env_name + bslash + weights_type + bslash + algorithm_cfg.train_type + bslash
 
     if not os.path.exists(algorithm_cfg.network_path):
         os.makedirs(algorithm_cfg.network_path)
@@ -67,8 +68,9 @@ def communicate_across_agents(agent, name_agent_list, algorithm_cfg):
 
 def start_environment(env_name):
     print_orderly('Environment', 80)
-    env_folder = os.path.dirname(os.path.abspath(__file__)) + "/unreal_envs/" + env_name + "/"
+    env_folder = os.path.dirname(os.path.abspath(__file__)) + "\\unreal_envs\\" + env_name + "\\"
     path = env_folder + env_name + ".exe"
+    print(path)
     # env_process = []
     env_process = subprocess.Popen(path)
     time.sleep(5)
@@ -440,9 +442,9 @@ def pygame_connect(phase):
     pygame.init()
 
     if phase == 'train':
-        img_path = 'images/train_keys.png'
+        img_path = 'images\\train_keys.png'
     elif phase == 'infer':
-        img_path = 'images/infer_keys.png'
+        img_path = 'images\\infer_keys.png'
     img = pygame.image.load(img_path)
 
     screen = pygame.display.set_mode(img.get_rect().size)
@@ -474,7 +476,7 @@ def check_user_input(active, automate, agent, client, old_posit, initZ, fig_z, f
         if event.type == pygame.KEYDOWN and cfg.mode =='train':
             if event.key == pygame.K_l:
                 # Load the parameters - epsilon
-                path = 'configs/' + cfg.algorithm + '.cfg'
+                path = 'configs\\' + cfg.algorithm + '.cfg'
                 algorithm_cfg = read_cfg(config_filename=path, verbose=False)
                 cfg, algorithm_cfg = save_network_path(cfg=cfg, algorithm_cfg=algorithm_cfg)
                 print('Updated Parameters')
@@ -526,7 +528,7 @@ def check_user_input(active, automate, agent, client, old_posit, initZ, fig_z, f
         elif event.type == pygame.KEYDOWN and cfg.mode == 'infer':
             if event.key == pygame.K_s:
                 # Save the figures
-                file_path = env_folder + 'results/'
+                file_path = env_folder + 'results\\'
                 fig_z.savefig(file_path+'altitude_variation.png', dpi=1000)
                 fig_nav.savefig(file_path+'navigation.png', dpi=1000)
                 print('Figures saved')

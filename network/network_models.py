@@ -16,8 +16,8 @@ class initialize_network_DeepQLearning():
         self.first_frame = True
         self.last_frame = []
         with self.g.as_default():
-            stat_writer_path = cfg.network_path + self.vehicle_name + '/return_plot/'
-            loss_writer_path = cfg.network_path + self.vehicle_name + '/loss' + name + '/'
+            stat_writer_path = cfg.network_path + self.vehicle_name + '\\return_plot\\'
+            loss_writer_path = cfg.network_path + self.vehicle_name + '\\loss' + name + '\\'
             self.stat_writer = tf.summary.FileWriter(stat_writer_path)
             # name_array = 'D:/train/loss'+'/'+name
             self.loss_writer = tf.summary.FileWriter(loss_writer_path)
@@ -37,7 +37,7 @@ class initialize_network_DeepQLearning():
             self.actions = tf.placeholder(tf.int32, shape=[None], name='Actions')
 
             # self.model = AlexNetDuel(self.X, cfg.num_actions, cfg.train_fc)
-            self.model = C3F2(self.X, cfg.num_actions, cfg.train_fc)
+            self.model = C3F2_REINFORCE_with_baseline(self.X, cfg.num_actions, cfg.train_fc)
 
             self.predict = self.model.output
             ind = tf.one_hot(self.actions, cfg.num_actions)
@@ -127,13 +127,13 @@ class initialize_network_DeepQLearning():
 
     def log_to_tensorboard(self, tag, group, value, index):
         summary = tf.Summary()
-        tag = group + '/' + tag
+        tag = group + '\\' + tag
         summary.value.add(tag=tag, simple_value=value)
         self.stat_writer.add_summary(summary, index)
 
 
     def save_network(self, save_path, episode=''):
-        save_path = save_path + self.vehicle_name + '/' + self.vehicle_name + '_' + str(episode)
+        save_path = save_path + self.vehicle_name + '\\' + self.vehicle_name + '_' + str(episode)
         self.saver.save(self.sess, save_path)
         print('Model Saved: ', save_path)
 
@@ -168,8 +168,8 @@ class initialize_network_DeepREINFORCE():
         self.last_frame = []
         self.iter_combined = 0
         with self.g.as_default():
-            stat_writer_path = cfg.network_path + self.vehicle_name + '/return_plot/'
-            loss_writer_path = cfg.network_path + self.vehicle_name + '/loss' + name + '/'
+            stat_writer_path = cfg.network_path + self.vehicle_name + '\\return_plot\\'
+            loss_writer_path = cfg.network_path + self.vehicle_name + '\\loss' + name + '\\'
             self.stat_writer = tf.summary.FileWriter(stat_writer_path)
             # name_array = 'D:/train/loss'+'/'+name
             self.loss_writer = tf.summary.FileWriter(loss_writer_path)
@@ -334,12 +334,12 @@ class initialize_network_DeepREINFORCE():
 
     def log_to_tensorboard(self, tag, group, value, index):
         summary = tf.Summary()
-        tag = group + '/' + tag
+        tag = group + '\\' + tag
         summary.value.add(tag=tag, simple_value=value)
         self.stat_writer.add_summary(summary, index)
 
     def save_network(self, save_path, episode=''):
-        save_path = save_path + self.vehicle_name + '/' + self.vehicle_name + '_' + str(episode)
+        save_path = save_path + self.vehicle_name + '\\' + self.vehicle_name + '_' + str(episode)
         self.saver.save(self.sess, save_path)
         print('Model Saved: ', save_path)
 

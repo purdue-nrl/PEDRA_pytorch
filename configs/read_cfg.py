@@ -29,7 +29,7 @@ def ConvertIfStringIsInt(input_string):
         return input_string
 
 
-def read_cfg(config_filename='configs/main.cfg', verbose=False):
+def read_cfg(config_filename='configs\\main.cfg', verbose=False):
     parser = ConfigParser()
     parser.optionxform = str
     parser.read(config_filename)
