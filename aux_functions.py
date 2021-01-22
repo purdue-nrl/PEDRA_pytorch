@@ -245,7 +245,7 @@ def train_REINFORCE(data_tuple, batch_size, agent, lr, input_size, gamma, epi_nu
         # Get the baseline value
         B = agent.network_model.get_baseline(x)
         # Train the baseline network
-        B_ = agent.network_model.train_baseline(x, G, action, lr, epi_num)
+        agent.network_model.train_baseline(x, G, action, lr, epi_num)
         # Train policy network
         agent.network_model.train_policy(x, action, B, G, lr, epi_num)
 

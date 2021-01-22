@@ -1,9 +1,10 @@
 # -*- coding: utf-8 -*-
 """
-Created on Tue Jan 19 21:43:46 2021
+Created on Thu Jan 21 19:16:20 2021
 
 @author: aparna
 """
+
 
 import numpy as np
 import torch
@@ -19,7 +20,7 @@ from numpy import linalg as LA
 from aux_functions import get_CustomImage, get_MonocularImageRGB, get_StereoImageRGB
 
 class PedraAgent():
-    def __init__(self, cfg, client, vehicle_name,  device = 'cuda'):
+    def __init__(self, cfg, client, vehicle_name, batch_size,  device = 'cuda'):
         self.env_type = cfg.env_type
         self.input_size = cfg.input_size
         self.num_actions = cfg.num_actions
@@ -29,7 +30,8 @@ class PedraAgent():
         self.device = device
         self.lr = cfg.learning_rate
         self.gamma = cfg.gamma
-        self.entropy_coeff = 0
+        self.entropy_coeff = 0.2
+        self.batch_size = batch_size
         # half_name = name.replace(vehicle_name, '')
         # print('Initializing ', half_name)
 
@@ -42,10 +44,10 @@ class PedraAgent():
         self.policy =  C3F2_with_baseline(num_actions = self.num_actions, in_ch=3).to(device)
         self.optimizer =  optim.Adam(self.policy.parameters(), lr=self.lr)
         
-        self.reward_memory = []
-        self.state_values = []
-        self.action_memory = []
-        self.entropy_values = []
+        # self.reward_memory = []
+        # self.state_values = []
+        # self.action_memory = []
+        #self.entropy_values = []
         #print(self.device)
         
 
@@ -55,60 +57,108 @@ class PedraAgent():
     
     def choose_action(self, observation):
         state = torch.tensor([observation]).to(self.device)
-        actions, state_value = self.policy(state)
+        actions, _ = self.policy(state)
         probabilities = F.softmax(actions, dim=1)
         action_probs = torch.distributions.Categorical(probabilities)
         #print(actions, probabilities)
         action = action_probs.sample()
         #print('here')
-        entropy = action_probs.entropy().mean().to(self.device)
-        
-        log_probs = action_probs.log_prob(action)
-        
-        
-        self.action_memory.append(log_probs.to(self.device))
-        self.state_values.append(state_value.to(self.device))
-        self.entropy_values.append(entropy.to(self.device))
+        #log_probs = action_probs.log_prob(action)
+        # self.action_memory.append(log_probs.to(self.device))
+        # self.state_values.append(state_value.to(self.device))
+        #self.entropy_values.append(entropy.to(self.device))
 
         return action.item()
     
-    def store_rewards(self, reward):
-        self.reward_memory.append(reward)
+    def get_baseline(self, observations):
+        state = torch.tensor([observations]).to(self.device)
+        state= state.type(torch.cuda.FloatTensor)
+        _, baseline = self.policy(state)
         
-    def learn(self):
-        G = np.zeros_like(self.reward_memory, dtype=np.float64)
-        for t in range(len(self.reward_memory)):
-            G_sum = 0
-            discount = 1
-            for k in range(t, len(self.reward_memory)):
-                G_sum += self.reward_memory[k] * discount
-                discount *= self.gamma
-            G[t] = G_sum
-        rewards = torch.tensor(G, dtype=torch.float).to(self.device)
+        return baseline
+    
+    def get_action_logprob(self, observations, action_taken):
+        state = torch.tensor([observations]).to(self.device)
+        state= state.type(torch.cuda.FloatTensor)
+        actions, _    = self.policy(state)
+        #print(actions.size())
+        probabilities = F.softmax(actions, dim=1)
         
-        if len(rewards)==1:
-            rewards = torch.tensor([0.0], dtype=torch.float).to(self.device)
-        else:
-            rewards = (rewards - rewards.mean()) / (rewards.std())
-            
-        loss = torch.tensor([0.0], dtype=torch.float).to(self.device)
+        for i in range(0, state.size(0)):
+            action_probs  = torch.distributions.Categorical(probabilities[i,:])
+            if i==0:
+                log_probs     = action_probs.log_prob(action_taken[i])
+                entropy      = action_probs.entropy().mean().to(self.device)
+            else:
+                log_probs = torch.cat((log_probs, action_probs.log_prob(action_taken[i])),0)
+                entropy  = torch.cat((entropy, action_probs.entropy().mean().to(self.device)),0)
+            #print( action_taken, action_taken.size())
         
-        for logprob, value, reward, entropy in zip(self.action_memory, self.state_values, rewards, self.entropy_values):
-            advantage = reward  - value.item()
-            action_loss = -logprob * advantage
-            value_loss = F.smooth_l1_loss(value, reward)
-            entropy_regularizer = -self.entropy_coeff * entropy
-            loss += (action_loss + value_loss+entropy_regularizer) 
-             
-        loss.backward()
-        #torch.nn.utils.clip_grad_norm(model.parameters(), max_norm=1)
-        self.optimizer.step()
-        self.optimizer.zero_grad()
+        return log_probs, entropy
+        
+    def learn(self, data_tuple, input_size):
+        episode_len = len(data_tuple)
 
-        self.action_memory = []
-        self.reward_memory = []
-        self.state_values  = []
-        self.entropy_values = []
+        curr_states = np.zeros(shape=(episode_len, input_size, input_size, 3))
+        actions = np.zeros(shape=(episode_len), dtype=int)
+        crashes = np.zeros(shape=(episode_len))
+        rewards = np.zeros(shape=episode_len)
+       # print('here')
+        #print(data_tuple)
+        for ii, m in enumerate(data_tuple):
+            curr_state_m, action_m, reward_m, crash_m = m
+            curr_states[ii, :, :, :] = curr_state_m[...]
+            actions[ii] = action_m
+            rewards[ii] = reward_m
+            crashes[ii] = crash_m
+
+        Gs = np.zeros(episode_len)
+        r = 0
+        for episode_step in range(episode_len - 1, -1, -1):
+            r = rewards[episode_step] + r * self.gamma
+            Gs[episode_step] = r
+
+        # Normalize the reward to reduce variance in training
+        Gs -= np.mean(Gs)
+        Gs /= (np.std(Gs) + 1e-8)
+        
+
+        num_batches = int(np.ceil(episode_len / self.batch_size))
+        for i in range(num_batches):
+            #print(i)
+            if i != num_batches - 1:
+                x = curr_states[i * self.batch_size:(i + 1) * self.batch_size, :, :, :]
+                G = Gs[i * self.batch_size:(i + 1) * self.batch_size]
+                action = actions[i * self.batch_size:(i + 1) * self.batch_size]
+            else:
+                x = curr_states[i * self.batch_size:, :, :, :]
+                G = Gs[i * self.batch_size:]
+                action = actions[i * self.batch_size:]
+
+            G = np.array([G])
+            G = G.T
+            G = torch.tensor(G).type(torch.FloatTensor).to(self.device)
+
+            # Restructure array
+            action = np.array([action])
+            action = action.T
+            action = torch.tensor(action).to(self.device)
+
+            # Get the baseline and log prob values
+            B = self.get_baseline(x)
+            action_logprob, entropy = self.get_action_logprob(x, action)
+            #print( G.size(), B.size(), action.size(), action[1])
+            #compute loss
+            loss_baseline = torch.nn.functional.mse_loss(B, G, reduction='mean')
+            loss_main     =  - action_logprob * (G-B)
+            entropy_loss  =  - self.entropy_coeff * entropy
+            loss = loss_baseline + loss_main + entropy_loss
+            #compute gradients
+            loss.sum().backward()
+            #update parameters
+            self.optimizer.step()
+            self.optimizer.zero_grad()
+            
         
 
     def take_action(self, action, num_actions, Mode):

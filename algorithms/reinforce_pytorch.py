@@ -1,14 +1,15 @@
 # -*- coding: utf-8 -*-
 """
-Created on Tue Jan 19 21:34:59 2021
+Created on Thu Jan 21 20:26:53 2021
 
 @author: aparna
 """
+
 import numpy as np
 import torch
 import sys, cv2
 import nvidia_smi
-from network.agent_pytorch import PedraAgent
+from network.agent_batched_pytorch import PedraAgent
 from unreal_envs.initial_positions import *
 from os import getpid
 #from network.Memory import Memory
@@ -18,9 +19,9 @@ from util.transformations import euler_from_quaternion
 from configs.read_cfg import read_cfg, update_algorithm_cfg
 
 
-def actorcritic_pytorch(cfg, env_process, env_folder):
-    torch.cuda.set_device(2)
-    algorithm_cfg = read_cfg(config_filename='configs\\actorcritic_pytorch.cfg', verbose=True)
+def reinforce_pytorch(cfg, env_process, env_folder):
+    torch.cuda.set_device(1)
+    algorithm_cfg = read_cfg(config_filename='configs\\reinforce_pytorch.cfg', verbose=True)
     algorithm_cfg.algorithm = cfg.algorithm
     # Connect to Unreal Engine and get the drone handle: client
     client, old_posit, initZ = connect_drone(ip_address=cfg.ip_address, phase=cfg.mode, num_agents=cfg.num_agents)
@@ -33,6 +34,7 @@ def actorcritic_pytorch(cfg, env_process, env_folder):
 
     # Load PyGame Screen
     screen = pygame_connect(phase=cfg.mode)
+    
 
     fig_z = []
     fig_nav = []
@@ -53,7 +55,8 @@ def actorcritic_pytorch(cfg, env_process, env_folder):
         data_tuple[name_agent] = []
         name_agent_list.append(name_agent)
         print_orderly(name_agent, 40)
-        agent[name_agent] = PedraAgent(algorithm_cfg, client, vehicle_name=name_agent)
+        agent[name_agent] = PedraAgent(algorithm_cfg, client, vehicle_name=name_agent, batch_size = algorithm_cfg.batch_size)
+        #print(algorithm_cfg.batch_size)
         current_state[name_agent] = agent[name_agent].get_state()
 
 
@@ -61,7 +64,6 @@ def actorcritic_pytorch(cfg, env_process, env_folder):
         name_agent = 'drone0'
         name_agent_list.append(name_agent)
         agent[name_agent] = PedraAgent(algorithm_cfg, client, vehicle_name=name_agent)
-        agent[name_agent].policy.load_state_dict(torch.load('saved_models\\actorcritic_twist_pytorch.h5'))
 
         env_cfg = read_cfg(config_filename=env_folder + 'config.cfg')
         nav_x = []
@@ -195,7 +197,7 @@ def actorcritic_pytorch(cfg, env_process, env_folder):
                                                                      debug, cfg)
 
                         ret[name_agent] = ret[name_agent] + reward
-                        agent[name_agent].store_rewards(reward)
+                        
                         agent_state = agent[name_agent].GetAgentState()
                         # print('generated reward')
 
@@ -208,7 +210,7 @@ def actorcritic_pytorch(cfg, env_process, env_folder):
                             crash = True
                             reward = -1
 
-                        #data_tuple[name_agent].append([current_state[name_agent], action, reward, crash])
+                        data_tuple[name_agent].append([current_state[name_agent], action, reward, crash])
 
                         # Train if episode ends
                         if crash:
@@ -222,10 +224,10 @@ def actorcritic_pytorch(cfg, env_process, env_folder):
                                     num_agents=cfg.num_agents, client=client)
                             else:
                                 print('Episode: ', epi_num[name_agent], '---- return: ', ret[name_agent],
-                                      ' safe flight: ',distance[name_agent], ' episode length: ', len(agent[name_agent].reward_memory))
+                                      ' safe flight: ',distance[name_agent], ' episode length: ', len(data_tuple[name_agent]))
                                
                                 # Train episode
-                                agent[name_agent].learn()
+                                agent[name_agent].learn(data_tuple[name_agent], algorithm_cfg.input_size)
                                 #c = agent[name_agent].network_model.get_vars()[15]
                                 
 
@@ -242,7 +244,7 @@ def actorcritic_pytorch(cfg, env_process, env_folder):
                                 old_posit[name_agent] = client.simGetVehiclePose(vehicle_name=name_agent)
 
                                 if epi_num[name_agent] % 1 == 0:
-                                    torch.save( agent[name_agent].policy.state_dict(), algorithm_cfg.network_path+'model_twist.h5')
+                                    torch.save( agent[name_agent].policy.state_dict(), algorithm_cfg.network_path+'model.h5')
                                     
 
 

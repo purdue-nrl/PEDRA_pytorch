@@ -2,7 +2,7 @@
 """
 Created on Tue Jan 19 21:48:23 2021
 
-@author: EE348PC1
+@author: aparna
 """
 
 import torch.nn as nn

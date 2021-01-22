@@ -9,6 +9,7 @@ from aux_functions import *
 from configs.read_cfg import read_cfg
 import importlib, json
 from unreal_envs.initial_positions import *
+import os
 # from aux_functions import *
 # TF Debug message suppressed
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
@@ -86,6 +87,7 @@ def generate_json(cfg):
 
 if __name__ == '__main__':
     # Read the config file
+    
     cfg = read_cfg(config_filename='configs\\config.cfg', verbose=True)
     cfg.num_agents=1
     can_proceed = generate_json(cfg)
