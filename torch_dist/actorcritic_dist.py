@@ -1,9 +1,11 @@
 # -*- coding: utf-8 -*-
 """
-Created on Tue Jan 19 21:34:59 2021
+Created on Mon Jan 25 13:09:50 2021
 
 @author: aparna
 """
+
+
 import numpy as np
 import torch
 import sys, cv2
@@ -18,9 +20,15 @@ from util.transformations import euler_from_quaternion
 from configs.read_cfg import read_cfg, update_algorithm_cfg
 
 
-def actorcritic_pytorch(cfg, env_process, env_folder):
+###########
+from gossip import GossipDataParallel
+from gossip import RingGraph
+from gossip import UniformMixing
+
+def actorcritic_dist(cfg, env_process, env_folder, rank, size):
     #torch.cuda.set_device(2)
-    algorithm_cfg = read_cfg(config_filename='configs\\actorcritic_pytorch.cfg', verbose=True)
+    device = torch.device("cuda:{}".format(rank))
+    algorithm_cfg = read_cfg(config_filename='configs\\actorcritic_dist.cfg', verbose=True)
     algorithm_cfg.algorithm = cfg.algorithm
     # Connect to Unreal Engine and get the drone handle: client
     client, old_posit, initZ = connect_drone(ip_address=cfg.ip_address, phase=cfg.mode, num_agents=cfg.num_agents)
@@ -48,13 +56,31 @@ def actorcritic_pytorch(cfg, env_process, env_folder):
     epi_num = {}
 
     if cfg.mode == 'train':
-        name_agent = "drone0"
+        name_agent = "drone"+str(rank)
         epi_num[name_agent] = 1
         data_tuple[name_agent] = []
         name_agent_list.append(name_agent)
         print_orderly(name_agent, 40)
-        agent[name_agent] = PedraAgent(algorithm_cfg, client, vehicle_name=name_agent)
+        agent[name_agent] = PedraAgent(algorithm_cfg, client, vehicle_name=name_agent, device=device)
+        graph = RingGraph(rank, size)
+        mixing = UniformMixing(graph, device)
+        agent[name_agent].policy = GossipDataParallel(agent[name_agent].policy, 
+				device_ids=[rank],
+				rank=rank,
+				world_size=size,
+				graph=graph, 
+				mixing=mixing,
+				comm_device=device, 
+                level = algorithm_cfg.level,
+                biased = algorithm_cfg.bias,
+                eta = algorithm_cfg.eta,
+                compress_ratio=algorithm_cfg.ratio, 
+                compress_fn = algorithm_cfg.compressor, 
+                compress_op = 'top_k')
+        agent[name_agent].optimizer = torch.optim.Adam(agent[name_agent].policy.parameters(), lr=agent[name_agent].lr)
         current_state[name_agent] = agent[name_agent].get_state()
+        agent[name_agent].policy.block()
+        agent[name_agent].policy.train()
 
 
     elif cfg.mode == 'infer':
@@ -226,6 +252,7 @@ def actorcritic_pytorch(cfg, env_process, env_folder):
                                
                                 # Train episode
                                 agent[name_agent].learn()
+                                _, dt = agent[name_agent].policy.transfer_params()
                                 #c = agent[name_agent].network_model.get_vars()[15]
                                 
 
@@ -240,8 +267,10 @@ def actorcritic_pytorch(cfg, env_process, env_folder):
                                 # time.sleep(0.2)
                                 current_state[name_agent] = agent[name_agent].get_state()
                                 old_posit[name_agent] = client.simGetVehiclePose(vehicle_name=name_agent)
+                                agent[name_agent].policy.block()
+                                agent[name_agent].policy.train()
 
-                                if epi_num[name_agent] % 1 == 0:
+                                if epi_num[name_agent] % 100 == 0:
                                     torch.save( agent[name_agent].policy.state_dict(), algorithm_cfg.network_path+'model_twist.h5')
                                     
 

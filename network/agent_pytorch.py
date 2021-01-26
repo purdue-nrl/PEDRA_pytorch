@@ -19,7 +19,7 @@ from numpy import linalg as LA
 from aux_functions import get_CustomImage, get_MonocularImageRGB, get_StereoImageRGB
 
 class PedraAgent():
-    def __init__(self, cfg, client, vehicle_name,  device = 'cuda'):
+    def __init__(self, cfg, client, vehicle_name,  device):
         self.env_type = cfg.env_type
         self.input_size = cfg.input_size
         self.num_actions = cfg.num_actions
@@ -38,7 +38,8 @@ class PedraAgent():
         ###########################################################################
         #network = importlib.import_module('network.network_models')
         #net_mod = 'network.' + 'initialize_network_' + cfg.algorithm + '(cfg, name, vehicle_name)'
-
+        torch.manual_seed(0)
+        torch.cuda.manual_seed(0)
         self.policy =  C3F2_with_baseline(num_actions = self.num_actions, in_ch=3).to(device)
         self.optimizer =  optim.Adam(self.policy.parameters(), lr=self.lr)
         
@@ -85,13 +86,6 @@ class PedraAgent():
                 discount *= self.gamma
             G[t] = G_sum
         rewards = torch.tensor(G, dtype=torch.float).to(self.device)
-<<<<<<< HEAD
-=======
-        if len(rewards)==1:
-            rewards = torch.tensor([0.0], dtype=torch.float).to(self.device)
-        else:
-            rewards = (rewards - rewards.mean()) / (rewards.std())
->>>>>>> b514c3c7e267fbf868afd1ad3888e3d1086dce6b
         
         if len(rewards)==1:
             rewards = torch.tensor([0.0], dtype=torch.float).to(self.device)

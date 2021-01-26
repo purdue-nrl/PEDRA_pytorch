@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Created on Tue Jan 19 23:29:47 2021
+Created on Mon Jan 25 13:12:54 2021
 
 @author: aparna
 """
@@ -12,6 +12,12 @@ from unreal_envs.initial_positions import *
 import os
 # from aux_functions import *
 # TF Debug message suppressed
+# Importing modules related to distributed processing
+import torch.distributed as dist
+from torch.multiprocessing import Process
+from torch.autograd import Variable
+from torch.multiprocessing import spawn
+
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
 
@@ -84,19 +90,17 @@ def generate_json(cfg):
 
     return flag
 
-
-if __name__ == '__main__':
+def run(rank, size):
     # Read the config file
-    
     cfg = read_cfg(config_filename='configs\\config.cfg', verbose=True)
-    cfg.num_agents=4
+    cfg.num_agents=1
     can_proceed = generate_json(cfg)
     # Check if NVIDIA GPU is available
-    try:
-        nvidia_smi.nvmlInit()
-        cfg.NVIDIA_GPU = True
-    except:
-        cfg.NVIDIA_GPU = False
+    # try:
+    #     nvidia_smi.nvmlInit()
+    #     cfg.NVIDIA_GPU = True
+    # except:
+    #     cfg.NVIDIA_GPU = False
     if can_proceed:
         # Start the environment
         env_process, env_folder = start_environment(env_name=cfg.env_name)
@@ -104,12 +108,25 @@ if __name__ == '__main__':
         # If mode = move_around, don't initialize any algorithm
         if cfg.mode != 'move_around':
             algorithm = importlib.import_module('algorithms.' + cfg.algorithm)
-            name = 'algorithm.' + cfg.algorithm + '(cfg, env_process, env_folder)'
+            name = 'algorithm.' + cfg.algorithm + '(cfg, env_process, env_folder, rank, size)'
             print(name)
             eval(name)
         else:
             print('Use keyboard to navigate')
+    
+def init_process(rank, size, fn, backend='gloo'):
+    """Initialize distributed enviornment"""
+    os.environ['MASTER_ADDR'] = 'localhost'
+    os.environ['MASTER_PORT'] = '2568'
+    #print(torch.distributed.get_backend())
+    dist.init_process_group(backend, rank=rank, world_size=size, init_method='file:\\E:\\PEDRA\\sharedfile')
+    #print('here')
+    fn(rank,size)
 
+
+if __name__ == '__main__':
+    size = 4
+    spawn(init_process, args=(size,run), nprocs=size,join=True)
 
 
 
