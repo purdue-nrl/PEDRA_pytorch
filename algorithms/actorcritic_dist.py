@@ -18,6 +18,8 @@ from aux_functions import *
 import os
 from util.transformations import euler_from_quaternion
 from configs.read_cfg import read_cfg, update_algorithm_cfg
+from torchviz import make_dot, make_dot_from_trace
+
 
 
 def actorcritic_dist(cfg, env_process, env_folder):
@@ -32,7 +34,7 @@ def actorcritic_dist(cfg, env_process, env_folder):
     initial_pos = old_posit.copy()
     # Load the initial positions for the environment
     reset_array, reset_array_raw, level_name, crash_threshold = initial_positions(cfg.env_name, initZ, cfg.num_agents)
-
+    #print(reset_array, reset_array_raw)
     # Initialize System Handlers
     process = psutil.Process(getpid())
 
@@ -149,9 +151,9 @@ def actorcritic_dist(cfg, env_process, env_folder):
 
     while active:
         try:
-            active, automate, algorithm_cfg, client = check_user_input(active, automate, agent[name_agent], client,
-                                                                       old_posit[name_agent], initZ, fig_z, fig_nav,
-                                                                       env_folder, cfg, algorithm_cfg)
+            # active, automate, algorithm_cfg, client = check_user_input(active, automate, agent[name_agent], client,
+            #                                                            old_posit[name_agent], initZ, fig_z, fig_nav,
+            #                                                            env_folder, cfg, algorithm_cfg)
 
             if automate:
 
@@ -263,7 +265,9 @@ def actorcritic_dist(cfg, env_process, env_folder):
                                       ' safe flight: ',distance[name_agent], ' episode length: ', len(agent[name_agent].reward_memory))
                                         
                                         # Train episode
+                                        
                                         agent[name_agent].learn()
+                                        
                                         
 
                                         data_tuple[name_agent] = []
@@ -278,18 +282,17 @@ def actorcritic_dist(cfg, env_process, env_folder):
                                         current_state[name_agent] = agent[name_agent].get_state()
                                         old_posit[name_agent] = client.simGetVehiclePose(vehicle_name=name_agent)
 
-                                        if epi_num[name_agent] % 100 == 0:
-                                            torch.save( agent[name_agent].policy.state_dict(), algorithm_cfg.network_path+'model_twist_'+name_agent+'.h5')
+                                        if epi_num[name_agent] % 1 == 0:
+                                            torch.save( agent[name_agent].policy.state_dict(), algorithm_cfg.network_path+'model_'+name_agent+'.h5')
 
                                         # if all are waiting for others, then we can reset.
                                         if all(wait_for_others.values()):
                                             # Now we can communicate weights
-                                            print('Communicating the weights and averaging them')
+                                            #make_dot(a.mean(), params=dict(agent[name_agent].policy.named_parameters())).render("attached", format="png")  
                                             comm_setup.gossip(agent)
+                                            print('---------------')
                                             for n in name_agent_list:
                                                 wait_for_others[n] = False
-
-
 
 
                                 else:
@@ -324,6 +327,7 @@ def actorcritic_dist(cfg, env_process, env_folder):
 
                                 if epi_num[name_agent] % algorithm_cfg.total_episodes == 0:
                                     print(automate)
+                                    close_env(env_process)
                                     automate = False
 
                                 iter[name_agent]+=1

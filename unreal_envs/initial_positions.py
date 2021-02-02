@@ -176,7 +176,8 @@ def indoor_long():
     # https://drive.google.com/drive/u/2/folders/1u5teth6l4JW2IXAkZAg1CbDGR6zE-v6Z
     orig_ip = [
         [-649, -4287, 180],  # Player Start
-        [-4224, -2601, 180],
+        [2058, -3184, 50], 
+        #[-4224, -2601, 180],
         [1180, -2153, -90],
         [-4971, -2844, -90]
         # [2058, -3184, 50],

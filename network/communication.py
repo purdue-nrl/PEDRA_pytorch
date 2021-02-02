@@ -72,13 +72,14 @@ class communication_setup():
     def dist_scalar(self, value, dtype):
         buffer = {}
         for i in range(0, self.world_size):
-            buffer[self.name_agent_list[i]] = torch.ones(value, device=self.device_list[self.name_agent_list[i]]).type(dtype)
+            buffer[self.name_agent_list[i]] = torch.Tensor([value]).to(self.device_list[self.name_agent_list[i]]).type(dtype)
             
         return buffer
             
     def gossip(self, agent):
         comp_p       = {}
         local_params = {}
+        in_msgs      = {}
     
         for i in range(0, self.world_size):
             #print(self.name_agent_list[i])
@@ -88,54 +89,56 @@ class communication_setup():
                 cp = p.clone().detach_()
                 cp = cp.to(self.device_list[self.name_agent_list[i]])#cp.cuda()
                 local_params[self.name_agent_list[i]].append(cp)
-            #print('cloning of parameters done')
-            # do error compensation step
+    
             for param, error in zip(local_params[self.name_agent_list[i]], self.gossip_error[self.name_agent_list[i]]):
-                param.data.add_(error) 
-            
-            # do the compression
-            #print('error compensation is done')
+                param.data.add_(error.data) 
+        
             comp_p[self.name_agent_list[i]] = quantize_layerwise(local_params[self.name_agent_list[i]],
                                                                  self.qlevel, device=self.device_list[self.name_agent_list[i]], is_biased=False)
-            # update the error variable
-            #print('compression is done')
+        
             for param, comp, error in zip(local_params[self.name_agent_list[i]], comp_p[self.name_agent_list[i]], 
                                             self.gossip_error[self.name_agent_list[i]]):
-                error.data.copy_(param)
-                error.data.add_(-comp)
-        
+                error.data.copy_(param.data)
+                error.data.add_(-comp.data)
+            #print(self.gossip_error[self.name_agent_list[i]][0,0])
+            # for p in comp_p[self.name_agent_list[i]]:
+            #     print('comp', p[0]); break
+            
         print('error compensation and compression step done!')
         local_params = {}
-        #update the local models
-        #print('averaging the collected gossip')
         for i in range(0, self.world_size):
             self_node  = self.name_agent_list[i]
             neighbours = self.graph_connect[self.name_agent_list[i]]
             self.clean_buffer(self.gossip_var[self_node])
-            
-            
             # collect the gossip
             for j in range(0, len(neighbours)):
                 weight = self.weights[self_node][j] if j>0 else self.weights[self_node][j] - 1.0
-                for buffer, gossip in zip(self.gossip_var[self_node], comp_p[neighbours[j]]):
-                    gossip.data.mul_(weight.to(self.device_list[neighbours[j]]).type(gossip.dtype))
-                    buffer.data.add_(gossip.to(self.device_list[self_node]))
-                    
+                in_msgs[neighbours[j]] = []
+                for p in comp_p[neighbours[j]]:
+                    cp = p.clone().detach_()
+                    cp = cp.to(self.device_list[self_node])#cp.cuda()
+                    in_msgs[neighbours[j]].append(cp)
+                #print('self, neighbour, weight', i, neighbours[j], weight)
+                for buffer, in_msg in zip(self.gossip_var[self_node], in_msgs[neighbours[j]]):
+                    #print('before', buffer, in_msg)
+                    in_msg.data.mul_(weight.to(self.device_list[self_node]).type(in_msg.dtype))
+                    buffer.data.add_(in_msg.data.to(self.device_list[self_node])) 
+                    #print('after', buffer, in_msg)
+                in_msgs = {}
+                #print(self.gossip_var[self_node][0][0,0], comp_p[neighbours[j]][0][0,0])
             
             #update params
-           
             for params, gossip_buf in zip( agent[self_node].policy.parameters(), self.gossip_var[self_node]):
+                #print(gossip_buf)
                 gossip_buf.data.mul_(self.averaging_rate[self_node])
-                params.data.add_(gossip_buf)
+                #print(gossip_buf)
+                params.data.add_(gossip_buf.data.type(params.dtype))
+                #print(params)
             
             self.clean_buffer(self.gossip_var[self_node])
             
          #clean buffers
         comp_p = {}
+        in_msgs = {}
         print('gossip average step done!')
             
-                
-    
-            
-    
-    

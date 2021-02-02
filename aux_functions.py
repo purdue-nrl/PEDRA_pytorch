@@ -305,6 +305,7 @@ def connect_drone(ip_address='127.0.0.0', phase='infer', num_agents=1, client=[]
         client.takeoffAsync(vehicle_name=name_agent)
         time.sleep(1)
         old_posit[name_agent] = client.simGetVehiclePose(vehicle_name=name_agent)
+        #print_orderly(name_agent, 40)
 
     initZ = old_posit[name_agent].position.z_val
 

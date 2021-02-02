@@ -10,7 +10,7 @@ import torch
 import torch.nn.functional as F
 import torch.optim as optim
 import cv2
-from network.network_pytorch import C3F2_with_baseline
+from network.network_pytorch import C3F2_with_baseline, test_network
 import airsim, time
 import random
 import matplotlib.pyplot as plt
@@ -29,7 +29,7 @@ class PedraAgent():
         self.device = device
         self.lr = cfg.learning_rate
         self.gamma = cfg.gamma
-        self.entropy_coeff = 0
+        self.entropy_coeff = 0.0
         # half_name = name.replace(vehicle_name, '')
         # print('Initializing ', half_name)
 
@@ -38,9 +38,10 @@ class PedraAgent():
         ###########################################################################
         #network = importlib.import_module('network.network_models')
         #net_mod = 'network.' + 'initialize_network_' + cfg.algorithm + '(cfg, name, vehicle_name)'
-        torch.manual_seed(0)
-        torch.cuda.manual_seed(0)
+        torch.manual_seed(1234)
+        torch.cuda.manual_seed(1234)
         self.policy =  C3F2_with_baseline(num_actions = self.num_actions, in_ch=3).to(device)
+        #self.policy    =  test_network(num_actions = self.num_actions, in_ch=3).to(device)
         self.optimizer =  optim.Adam(self.policy.parameters(), lr=self.lr)
         
         self.reward_memory = []

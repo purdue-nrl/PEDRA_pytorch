@@ -49,7 +49,42 @@ class C3F2_with_baseline(nn.Module):
     
    
         
+class test_network(nn.Module):
+    def __init__(self, num_actions, in_ch=3):
+        super(test_network, self).__init__()
+        # feature extractor
+        self.conv1 = nn.Conv2d(in_channels = in_ch, kernel_size=3, out_channels=1, stride=4)
+        self.maxpool1 = nn.MaxPool2d(kernel_size=7, stride=2)
+        self.conv2 = nn.Conv2d(in_channels = 1, kernel_size=3, out_channels=1, stride=1)
+        self.maxpool2 = nn.MaxPool2d(kernel_size=2, stride=2)
+        self.conv3 = nn.Conv2d(in_channels = 1, kernel_size=3, out_channels=1, stride=1)
+        # Main Network
+        self.policy = nn.Sequential(
+            nn.Linear(4, 4),
+            nn.ReLU(inplace=True),
+            nn.Linear(4, num_actions) ) # add softmax in forward
+        # Baseline Network
+        self.baseline = nn.Sequential(
+            nn.Linear(4, 4),
+            nn.ReLU(inplace=True),
+            nn.Linear(4, 1)) # no non-linearity after this layer
         
+        
+    def forward(self, x):
+        
+        x = torch.squeeze(x, 0).permute(0,3,1,2)
+        #print(np.shape(x))
+        x = self.maxpool1(self.conv1(x))
+        #print('here')
+        x = self.maxpool2(self.conv2(x))
+        x = self.conv3(x)
+        #print(np.shape(x))
+        #print(x.size())
+        features = torch.reshape(x, (x.size(0),-1))
+        action   = self.policy(features)
+        baseline = self.baseline(features)
+        
+        return action, baseline
         
 
   

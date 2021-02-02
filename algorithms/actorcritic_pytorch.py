@@ -53,16 +53,18 @@ def actorcritic_pytorch(cfg, env_process, env_folder):
         data_tuple[name_agent] = []
         name_agent_list.append(name_agent)
         print_orderly(name_agent, 40)
-        agent[name_agent] = PedraAgent(algorithm_cfg, client, vehicle_name=name_agent)
+        agent[name_agent] = PedraAgent(algorithm_cfg, client, vehicle_name=name_agent, device='cuda')
         current_state[name_agent] = agent[name_agent].get_state()
+        print(agent[name_agent].policy)
 
 
     elif cfg.mode == 'infer':
         name_agent = 'drone0'
         name_agent_list.append(name_agent)
-        agent[name_agent] = PedraAgent(algorithm_cfg, client, vehicle_name=name_agent)
-        agent[name_agent].policy.load_state_dict(torch.load('saved_models\\actorcritic_twist_pytorch.h5'))
-
+        agent[name_agent] = PedraAgent(algorithm_cfg, client, vehicle_name=name_agent, device='cuda')
+        model_name = 'long_nc_drone3.h5'
+        agent[name_agent].policy.load_state_dict(torch.load(model_name))
+        print(model_name)
         env_cfg = read_cfg(config_filename=env_folder + 'config.cfg')
         nav_x = []
         nav_y = []
@@ -242,7 +244,7 @@ def actorcritic_pytorch(cfg, env_process, env_folder):
                                 old_posit[name_agent] = client.simGetVehiclePose(vehicle_name=name_agent)
 
                                 if epi_num[name_agent] % 1 == 0:
-                                    torch.save( agent[name_agent].policy.state_dict(), algorithm_cfg.network_path+'model_twist.h5')
+                                    torch.save( agent[name_agent].policy.state_dict(), algorithm_cfg.network_path+'model.h5')
                                     
 
 
@@ -285,6 +287,7 @@ def actorcritic_pytorch(cfg, env_process, env_folder):
                         if epi_num[name_agent] % algorithm_cfg.total_episodes == 0:
                             print(automate)
                             automate = False
+                            close_env(env_process)
 
                     iter += 1
 
