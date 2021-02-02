@@ -327,7 +327,7 @@ def actorcritic_dist(cfg, env_process, env_folder):
 
                                 if epi_num[name_agent] % algorithm_cfg.total_episodes == 0:
                                     print(automate)
-                                    close_env(env_process)
+                                    #close_env(env_process)
                                     automate = False
 
                                 iter[name_agent]+=1
