@@ -25,6 +25,7 @@ class C3F2_with_baseline(nn.Module):
             nn.Linear(256, 1024),
             nn.ReLU(inplace=True),
             nn.Linear(1024, num_actions) ) # add softmax in forward
+            
         # Baseline Network
         self.baseline = nn.Sequential(
             nn.Linear(256, 1024),

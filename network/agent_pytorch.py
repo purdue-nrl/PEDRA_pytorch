@@ -29,7 +29,7 @@ class PedraAgent():
         self.device = device
         self.lr = cfg.learning_rate
         self.gamma = cfg.gamma
-        self.entropy_coeff = 0.0
+        self.entropy_coeff = 0.03
         # half_name = name.replace(vehicle_name, '')
         # print('Initializing ', half_name)
 
@@ -59,6 +59,8 @@ class PedraAgent():
         state = torch.tensor([observation]).to(self.device)
         actions, state_value = self.policy(state)
         probabilities = F.softmax(actions, dim=1)
+        #for p in self.policy.parameters(): print (p); break
+        #print(probabilities)
         action_probs = torch.distributions.Categorical(probabilities)
         #print(actions, probabilities)
         action = action_probs.sample()

@@ -62,7 +62,7 @@ def actorcritic_pytorch(cfg, env_process, env_folder):
         name_agent = 'drone0'
         name_agent_list.append(name_agent)
         agent[name_agent] = PedraAgent(algorithm_cfg, client, vehicle_name=name_agent, device='cuda')
-        model_name = 'long_nc_drone3.h5'
+        model_name = 'saved_models\\long_8b_drone3.h5'
         agent[name_agent].policy.load_state_dict(torch.load(model_name))
         print(model_name)
         env_cfg = read_cfg(config_filename=env_folder + 'config.cfg')
@@ -75,7 +75,8 @@ def actorcritic_pytorch(cfg, env_process, env_folder):
         nav_text = ax_nav.text(0, 0, '')
 
         # Select initial position
-        reset_to_initial(0, reset_array, client, vehicle_name=name_agent)
+        reset_to_initial(1, reset_array, client, vehicle_name=name_agent)
+        #print(reset_array)
         old_posit[name_agent] = client.simGetVehiclePose(vehicle_name=name_agent)
 
     # Initialize variables

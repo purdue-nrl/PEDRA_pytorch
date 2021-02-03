@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Created on Mon Jan 25 13:43:19 2021
+Created on Tue Feb  2 05:51:57 2021
 
 @author: aparna
 """
@@ -9,7 +9,7 @@ import numpy as np
 import torch
 import sys, cv2
 import nvidia_smi
-from network.agent_pytorch import PedraAgent
+from network.agent_batched_pytorch import PedraAgent
 from network.communication import communication_setup
 from unreal_envs.initial_positions import *
 from os import getpid
@@ -24,7 +24,7 @@ from torchviz import make_dot, make_dot_from_trace
 
 def actorcritic_dist(cfg, env_process, env_folder):
     #torch.cuda.set_device(2)
-    algorithm_cfg = read_cfg(config_filename='configs/actorcritic_dist.cfg', verbose=True)
+    algorithm_cfg = read_cfg(config_filename='configs/reinforce_dist.cfg', verbose=True)
     algorithm_cfg.algorithm = cfg.algorithm
 
     client = []
@@ -151,9 +151,9 @@ def actorcritic_dist(cfg, env_process, env_folder):
 
     while active:
         try:
-            active, automate, algorithm_cfg, client = check_user_input(active, automate, agent[name_agent], client,
-                                                                        old_posit[name_agent], initZ, fig_z, fig_nav,
-                                                                       env_folder, cfg, algorithm_cfg)
+            # active, automate, algorithm_cfg, client = check_user_input(active, automate, agent[name_agent], client,
+            #                                                            old_posit[name_agent], initZ, fig_z, fig_nav,
+            #                                                            env_folder, cfg, algorithm_cfg)
 
             if automate:
 
@@ -238,7 +238,7 @@ def actorcritic_dist(cfg, env_process, env_folder):
                                     crash = True
                                     reward = -1
 
-                                #data_tuple[name_agent].append([current_state[name_agent], action, reward, crash])
+                                data_tuple[name_agent].append([current_state[name_agent], action, reward, crash])
 
                                 # Train if episode ends
                                 if crash:
@@ -266,8 +266,10 @@ def actorcritic_dist(cfg, env_process, env_folder):
                                         
                                         # Train episode
                                         
-                                        agent[name_agent].learn()
+                                        agent[name_agent].learn(data_tuple[name_agent], algorithm_cfg.input_size)
                                         
+                                        
+
                                         data_tuple[name_agent] = []
                                         epi_num[name_agent] += 1
                                         ret[name_agent] = 0

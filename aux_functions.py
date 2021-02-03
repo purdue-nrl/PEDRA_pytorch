@@ -278,6 +278,7 @@ def policy(epsilon, curr_state, iter, b, epsilon_model, wait_before_train, num_a
 def reset_to_initial(level, reset_array, client, vehicle_name):
     # client.moveByVelocityAsync(vx=0, vy=0, vz=0, duration=0.01, vehicle_name=vehicle_name)
     reset_pos = reset_array[vehicle_name][level]
+    #print(reset_pos, level)
     # reset_pos = p
 
     client.simSetVehiclePose(reset_pos, ignore_collison=True, vehicle_name=vehicle_name)

@@ -86,7 +86,7 @@ class communication_setup():
             # clone parameters for gossip
             local_params[self.name_agent_list[i]] = []
             for p in agent[self.name_agent_list[i]].policy.parameters():
-                cp = p.clone().detach_()
+                cp = p.clone().detach()
                 cp = cp.to(self.device_list[self.name_agent_list[i]])#cp.cuda()
                 local_params[self.name_agent_list[i]].append(cp)
     
@@ -94,7 +94,7 @@ class communication_setup():
                 param.data.add_(error.data) 
         
             comp_p[self.name_agent_list[i]] = quantize_layerwise(local_params[self.name_agent_list[i]],
-                                                                 self.qlevel, device=self.device_list[self.name_agent_list[i]], is_biased=False)
+                                                                 self.qlevel, device=self.device_list[self.name_agent_list[i]], is_biased=True)
         
             for param, comp, error in zip(local_params[self.name_agent_list[i]], comp_p[self.name_agent_list[i]], 
                                             self.gossip_error[self.name_agent_list[i]]):
@@ -115,15 +115,15 @@ class communication_setup():
                 weight = self.weights[self_node][j] if j>0 else self.weights[self_node][j] - 1.0
                 in_msgs[neighbours[j]] = []
                 for p in comp_p[neighbours[j]]:
-                    cp = p.clone().detach_()
+                    cp = p.clone().detach()
                     cp = cp.to(self.device_list[self_node])#cp.cuda()
                     in_msgs[neighbours[j]].append(cp)
                 #print('self, neighbour, weight', i, neighbours[j], weight)
                 for buffer, in_msg in zip(self.gossip_var[self_node], in_msgs[neighbours[j]]):
-                    #print('before', buffer, in_msg)
+                    #print('before', buffer[0], in_msg[0])
                     in_msg.data.mul_(weight.to(self.device_list[self_node]).type(in_msg.dtype))
                     buffer.data.add_(in_msg.data.to(self.device_list[self_node])) 
-                    #print('after', buffer, in_msg)
+                    #print('after', buffer[0], in_msg[0])
                 in_msgs = {}
                 #print(self.gossip_var[self_node][0][0,0], comp_p[neighbours[j]][0][0,0])
             
@@ -131,9 +131,9 @@ class communication_setup():
             for params, gossip_buf in zip( agent[self_node].policy.parameters(), self.gossip_var[self_node]):
                 #print(gossip_buf)
                 gossip_buf.data.mul_(self.averaging_rate[self_node])
-                #print(gossip_buf)
+                #print(gossip_buf[0])
                 params.data.add_(gossip_buf.data.type(params.dtype))
-                #print(params)
+                #print(params[0])
             
             self.clean_buffer(self.gossip_var[self_node])
             
